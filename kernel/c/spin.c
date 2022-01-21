@@ -43,6 +43,8 @@ unsigned spin_compute_seq (unsigned nb_iter)
 
     for (int i = 0; i < DIM; i++)
       for (int j = 0; j < DIM; j++)
+        // if (j < DIM/2)
+        if (i < DIM/2 || j < DIM/2)
         cur_img (i, j) = compute_color (i, j);
 
     rotate (); // Slightly increase the base angle
@@ -73,6 +75,7 @@ unsigned spin_compute_tiled (unsigned nb_iter)
 
     for (int y = 0; y < DIM; y += TILE_H)
       for (int x = 0; x < DIM; x += TILE_W)
+      // if ((x / TILE_W + y / TILE_H) % 2)
         do_tile (x, y, TILE_W, TILE_H, 0 /* CPU id */);
 
     rotate ();
@@ -81,6 +84,44 @@ unsigned spin_compute_tiled (unsigned nb_iter)
   return 0;
 }
 
+///////////////////////////// Tiled parallel version (tiled)
+// Suggested cmdline(s):
+// ./run -k spin -v omp -ts 64 -m
+//
+unsigned spin_compute_omp (unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++) {
+
+#pragma omp parallel
+    for (int y = 0; y < DIM; y += TILE_H)
+#pragma omp for schedule(runtime)
+      for (int x = 0; x < DIM; x += TILE_W)
+        do_tile (x, y, TILE_W, TILE_H, omp_get_thread_num());
+
+    rotate ();
+  }
+
+  return 0;
+}
+
+///////////////////////////// Tiled parallel version (tiled)
+// Suggested cmdline(s):
+// ./run -k spin -v omp_tiled -ts 64 -m
+//
+unsigned spin_compute_omp_tiled (unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++) {
+
+#pragma omp parallel for schedule(runtime) collapse(2)
+    for (int y = 0; y < DIM; y += TILE_H)
+      for (int x = 0; x < DIM; x += TILE_W)
+        do_tile (x, y, TILE_W, TILE_H, omp_get_thread_num());
+
+    rotate ();
+  }
+
+  return 0;
+}
 
 //////////////////////////////////////////////////////////////////////////
 
