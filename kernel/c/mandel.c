@@ -52,6 +52,25 @@ unsigned mandel_compute_tiled (unsigned nb_iter)
   return 0;
 }
 
+///////////////////////////// Tiled parallel version (tiled)
+// Suggested cmdline:
+// ./run -k mandel -v omp_tiled -ts 64
+//
+unsigned mandel_compute_omp_tiled (unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++) {
+
+#pragma omp parallel for schedule(runtime) collapse(2)
+    for (int y = 0; y < DIM; y += TILE_H)
+      for (int x = 0; x < DIM; x += TILE_W)
+        do_tile (x, y, TILE_W, TILE_H, 0);
+
+    zoom ();
+  }
+
+  return 0;
+}
+
 /////////////// Mandelbrot basic computation
 
 #define MAX_ITERATIONS 4096
