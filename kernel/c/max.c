@@ -29,6 +29,7 @@ int tile_down_right (int x, int y, int w, int h, int cpu)
 
   monitoring_start_tile (cpu);
 
+// #pragma omp parallel for collapse(2)
   for (int i = y; i < y + h; i++)
     for (int j = x; j < x + w; j++)
       if (cur_img (i, j)) {
@@ -66,6 +67,7 @@ int tile_up_left (int x, int y, int w, int h, int cpu)
 
   monitoring_start_tile (cpu);
 
+// #pragma omp parallel for collapse(2)
   for (int i = y + h - 1; i >= y; i--)
     for (int j = x + w - 1; j >= x; j--)
       if (cur_img (i, j)) {
@@ -140,6 +142,41 @@ unsigned max_compute_tiled (unsigned nb_iter)
   return res;
 }
 
+///////////////////////////// Tiled sequential version (tiled)
+// Suggested cmdline(s):
+// ./run -l images/spirale.png -k max -v tiled_task -ts 32
+//
+unsigned max_compute_tiled_task (unsigned nb_iter)
+{
+  unsigned res = 0;
+
+#pragma omp parallel
+  {
+#pragma omp master
+    for (unsigned it = 1; it <= nb_iter; it++) {
+      int change = 0;
+
+      // Bottom-right propagation
+      for (int i = 0; i < NB_TILES_Y; i++)
+        for (int j = 0; j < NB_TILES_X; j++)
+#pragma omp task firstprivate(i,j)
+          change |= tile_down_right (j * TILE_W, i * TILE_H, TILE_W, TILE_H, 0);
+          // Up-left propagation
+      for (int i = NB_TILES_Y - 1; i >= 0; i--)
+        for (int j = NB_TILES_X - 1; j >= 0; j--)
+#pragma omp task firstprivate(i,j)
+          change |= tile_up_left (j * TILE_W, i * TILE_H, TILE_W, TILE_H, 0);
+
+#pragma omp taskwait
+      if (!change) {
+        res = it;
+        break;
+      }
+    }
+  }
+
+  return res;
+}
 
 ///////////////////////////// Drawing functions
 
