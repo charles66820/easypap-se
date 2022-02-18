@@ -6,6 +6,7 @@ import os
 easyspap_options = {}
 easyspap_options["--kernel "] = ["scrollup"]
 easyspap_options["--variant "] = ["seq", "ji"]
+easyspap_options["-of "] = ["scrollup.csv"]
 
 omp_icv = {}  # OpenMP Internal Control Variables
 omp_icv["OMP_NUM_THREADS="] = [1]

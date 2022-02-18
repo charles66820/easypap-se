@@ -82,9 +82,10 @@ static SDL_Texture *tab_low         = NULL;
 static SDL_Texture *align_tex       = NULL;
 static SDL_Texture *quick_nav_tex   = NULL;
 static SDL_Texture *track_tex       = NULL;
+static SDL_Texture *footprint_tex   = NULL;
 static SDL_Texture *digit_tex[10]   = {NULL};
 
-static SDL_Rect align_rect, quick_nav_rect, track_rect;
+static SDL_Rect align_rect, quick_nav_rect, track_rect, footprint_rect;
 
 static unsigned digit_tex_width[10];
 static unsigned digit_tex_height;
@@ -92,6 +93,7 @@ static unsigned digit_tex_height;
 static int quick_nav_mode = 0;
 static int horiz_mode     = 0;
 static int tracking_mode  = 0;
+static int footprint_mode = 0;
 
 static long start_time = 0, end_time = 0, duration = 0;
 
@@ -183,6 +185,9 @@ static void layout_place_buttons (void)
 
   track_rect.x = align_rect.x - Y_MARGIN - track_rect.w;
   track_rect.y = 2;
+
+  footprint_rect.x = track_rect.x - Y_MARGIN - footprint_rect.w;
+  footprint_rect.y = 2;
 }
 
 static void layout_recompute (void)
@@ -733,6 +738,17 @@ static void create_misc_tex (void)
                           tracking_mode ? 0xFF : BUTTON_ALPHA);
 
   SDL_QueryTexture (track_tex, NULL, NULL, &track_rect.w, &track_rect.h);
+
+  surf = IMG_Load ("./traces/img/footprint.png");
+  if (surf == NULL)
+    exit_with_error ("IMG_Load failed: %s", SDL_GetError ());
+
+  footprint_tex = SDL_CreateTextureFromSurface (renderer, surf);
+  SDL_FreeSurface (surf);
+  SDL_SetTextureAlphaMod (footprint_tex,
+                          footprint_mode ? 0xFF : BUTTON_ALPHA);
+
+  SDL_QueryTexture (footprint_tex, NULL, NULL, &footprint_rect.w, &footprint_rect.h);
 }
 
 // Display functions
@@ -956,18 +972,20 @@ static void display_mouse_selection (const selected_task_info_t *selected)
   SDL_Rect dst;
 
   if (horiz_mode) {
-    // horizontal bar
-    if (mouse_in_gantt_zone) {
-      dst.x = trace_display_info[0].gantt.x;
-      dst.y = mouse.y;
-      dst.w = GANTT_WIDTH;
-      dst.h = 1;
+    if (!footprint_mode) {
+      // horizontal bar
+      if (mouse_in_gantt_zone) {
+        dst.x = trace_display_info[0].gantt.x;
+        dst.y = mouse.y;
+        dst.w = GANTT_WIDTH;
+        dst.h = 1;
 
-      SDL_RenderCopy (renderer, horizontal_line, NULL, &dst);
+        SDL_RenderCopy (renderer, horizontal_line, NULL, &dst);
 
-      dst.y = get_y_mouse_sibbling ();
-      if (dst.y != mouse.y)
-        SDL_RenderCopy (renderer, horizontal_bis, NULL, &dst);
+        dst.y = get_y_mouse_sibbling ();
+        if (dst.y != mouse.y)
+          SDL_RenderCopy (renderer, horizontal_bis, NULL, &dst);
+      }
     }
   } else {
     trace_t *tr     = selected->trace;
@@ -1023,6 +1041,7 @@ static void display_mouse_selection (const selected_task_info_t *selected)
 static void display_misc_status (void)
 {
   SDL_RenderCopy (renderer, quick_nav_tex, NULL, &quick_nav_rect);
+  SDL_RenderCopy (renderer, footprint_tex, NULL, &footprint_rect);
 
   if (nb_traces > 1) {
     SDL_RenderCopy (renderer, align_tex, NULL, &align_rect);
@@ -1233,7 +1252,7 @@ static void trace_graphics_display_trace (unsigned _t,
           // Check if mouse is within the bounds of the gantt zone
           if (mouse_in_gantt_zone) {
 
-            if (horiz_mode && point_in_yrange (&dst, virt_mouse.y)) {
+            if (horiz_mode && (footprint_mode | point_in_yrange (&dst, virt_mouse.y))) {
               if (to_be_emphasized[c] == NULL)
                 to_be_emphasized[c] =
                     first; // store a ref to the first task on this lane
@@ -1441,8 +1460,34 @@ void trace_graphics_toggle_vh_mode (void)
 {
   horiz_mode ^= 1;
 
-  if (tracking_mode)
+  if (tracking_mode) {
     tracking_mode = 0;
+    SDL_SetTextureAlphaMod (track_tex, BUTTON_ALPHA);
+  }
+  if (footprint_mode) {
+    footprint_mode = 0;
+    SDL_SetTextureAlphaMod (footprint_tex, BUTTON_ALPHA);
+  }
+  trace_graphics_display ();
+}
+
+void trace_graphics_toggle_footprint_mode (void)
+{
+  static unsigned old_horiz, old_track;
+
+  footprint_mode ^= 1;
+  SDL_SetTextureAlphaMod (footprint_tex, footprint_mode ? 0xFF : BUTTON_ALPHA);
+
+  if (footprint_mode) {
+    old_horiz = horiz_mode;
+    old_track = tracking_mode;
+    horiz_mode = 1;
+    tracking_mode = 0;
+  } else {
+    horiz_mode = old_horiz;
+    tracking_mode = old_track;
+  }
+  SDL_SetTextureAlphaMod (track_tex, tracking_mode ? 0xFF : BUTTON_ALPHA);
 
   trace_graphics_display ();
 }
@@ -1451,10 +1496,14 @@ void trace_graphics_toggle_tracking_mode (void)
 {
   if (nb_traces > 1) {
     tracking_mode ^= 1;
+    SDL_SetTextureAlphaMod (track_tex, tracking_mode ? 0xFF : BUTTON_ALPHA);
 
     horiz_mode = 0;
 
-    SDL_SetTextureAlphaMod (track_tex, tracking_mode ? 0xFF : BUTTON_ALPHA);
+    if (footprint_mode) {
+      footprint_mode = 0;
+      SDL_SetTextureAlphaMod (footprint_tex, BUTTON_ALPHA);
+    }
 
     trace_graphics_display ();
   } else

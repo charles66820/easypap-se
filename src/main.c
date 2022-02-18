@@ -180,11 +180,11 @@ static void set_default_trace_label (void)
     char *str = getenv ("OMP_SCHEDULE");
 
     if (str != NULL)
-      snprintf (trace_label, MAX_LABEL, "%s_%s (%s) %d/%dx%d", kernel_name,
-                variant_name, str, DIM, TILE_W, TILE_H);
+      snprintf (trace_label, MAX_LABEL, "%s %s %s (%s) %d/%dx%d", kernel_name,
+                variant_name, strcmp(tile_name, "none") ? tile_name : "", str, DIM, TILE_W, TILE_H);
     else
-      snprintf (trace_label, MAX_LABEL, "%s_%s %d/%dx%d", kernel_name,
-                variant_name, DIM, TILE_W, TILE_H);
+      snprintf (trace_label, MAX_LABEL, "%s %s %s %d/%dx%d", kernel_name,
+                variant_name, strcmp(tile_name, "none") ? tile_name : "", DIM, TILE_W, TILE_H);
   }
 }
 
@@ -584,8 +584,10 @@ int main (int argc, char **argv)
         if (max_iter && iterations + refresh_rate > max_iter)
           refresh_rate = max_iter - iterations;
 
+#ifdef ENABLE_TRACE
         if (trace_may_be_used && (iterations + 1 == trace_starting_iteration))
           do_trace = 1;
+#endif
 
         monitoring_start_iteration ();
 

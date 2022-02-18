@@ -195,6 +195,9 @@ int main (int argc, char **argv)
         case SDLK_t:
           trace_graphics_toggle_tracking_mode ();
           break;
+        case SDLK_f:
+          trace_graphics_toggle_footprint_mode ();
+          break;
         case SDLK_z:
           trace_graphics_zoom_to_selection ();
           break;
