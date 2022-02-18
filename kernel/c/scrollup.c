@@ -59,6 +59,25 @@ unsigned scrollup_compute_tiled (unsigned nb_iter)
   return 0;
 }
 
+///////////////////////////// Tiled sequential version (ji)
+// Suggested cmdline(s):
+// ./run -l images/1024.png -k scrollup -v ji
+//
+unsigned scrollup_compute_ji (unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++) {
+
+    for (int i = 0; i < DIM; i++) {
+      for (int j = 0; j < DIM; j++)
+        next_img (j, i) = cur_img ((j < DIM - 1) ? j + 1 : 0, i);
+        // next_img (DIM - 1, j) = cur_img (0, j); ??????????????????????????????
+    }
+
+    swap_images ();
+  }
+
+  return 0;
+}
 
 //////////// OpenCL version using mask (ocl_ouf)
 // Suggested cmdlines:
