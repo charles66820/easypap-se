@@ -118,7 +118,6 @@ int tile_down_right_omp (int x, int y, int w, int h, int cpu)
 
   monitoring_start_tile (cpu);
 
-#pragma omp parallel
 #pragma omp for schedule(runtime) collapse(2)
   for (int i = y; i < y + h; i++)
     for (int j = x; j < x + w; j++)
@@ -155,7 +154,6 @@ int tile_up_left_omp (int x, int y, int w, int h, int cpu)
 
   monitoring_start_tile (cpu);
 
-#pragma omp parallel
 #pragma omp for schedule(runtime) collapse(2)
   for (int i = y + h - 1; i >= y; i--)
     for (int j = x + w - 1; j >= x; j--)
@@ -193,9 +191,15 @@ int tile_up_left_omp (int x, int y, int w, int h, int cpu)
 unsigned max_compute_omp (unsigned nb_iter)
 {
   for (unsigned it = 1; it <= nb_iter; it++) {
+    int right;
+    int left;
+    #pragma omp parallel
+    {
+      right = tile_down_right_omp (0, 0, DIM, DIM, omp_get_thread_num());
+      left = tile_up_left_omp (0, 0, DIM, DIM, omp_get_thread_num());
+    }
 
-    if ((tile_down_right_omp (0, 0, DIM, DIM, 0) |
-         tile_up_left_omp (0, 0, DIM, DIM, 0)) == 0)
+    if ((right | left) == 0)
       return it;
   }
 
