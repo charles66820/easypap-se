@@ -29,7 +29,6 @@ int tile_down_right (int x, int y, int w, int h, int cpu)
 
   monitoring_start_tile (cpu);
 
-// #pragma omp parallel for collapse(2)
   for (int i = y; i < y + h; i++)
     for (int j = x; j < x + w; j++)
       if (cur_img (i, j)) {
@@ -67,7 +66,6 @@ int tile_up_left (int x, int y, int w, int h, int cpu)
 
   monitoring_start_tile (cpu);
 
-// #pragma omp parallel for collapse(2)
   for (int i = y + h - 1; i >= y; i--)
     for (int j = x + w - 1; j >= x; j--)
       if (cur_img (i, j)) {
@@ -107,6 +105,97 @@ unsigned max_compute_seq (unsigned nb_iter)
 
     if ((tile_down_right (0, 0, DIM, DIM, 0) |
          tile_up_left (0, 0, DIM, DIM, 0)) == 0)
+      return it;
+  }
+
+  return 0;
+}
+
+
+int tile_down_right_omp (int x, int y, int w, int h, int cpu)
+{
+  int change = 0;
+
+  monitoring_start_tile (cpu);
+
+#pragma omp parallel
+#pragma omp for schedule(runtime) collapse(2)
+  for (int i = y; i < y + h; i++)
+    for (int j = x; j < x + w; j++)
+      if (cur_img (i, j)) {
+        if (i > 0 && j > 0) {
+          uint32_t m = max (cur_img (i - 1, j), cur_img (i, j - 1));
+          if (m > cur_img (i, j)) {
+            change     = 1;
+            cur_img (i, j) = m;
+          }
+        } else if (j > 0) {
+          uint32_t m = cur_img (i, j - 1);
+          if (m > cur_img (i, j)) {
+            change     = 1;
+            cur_img (i, j) = m;
+          }
+        } else if (i > 0) {
+          uint32_t m = cur_img (i - 1, j);
+          if (m > cur_img (i, j)) {
+            change     = 1;
+            cur_img (i, j) = m;
+          }
+        }
+      }
+
+  monitoring_end_tile_id (x, y, w, h, cpu, TASKID_DOWN_RIGHT);
+
+  return change;
+}
+
+int tile_up_left_omp (int x, int y, int w, int h, int cpu)
+{
+  int change = 0;
+
+  monitoring_start_tile (cpu);
+
+#pragma omp parallel
+#pragma omp for schedule(runtime) collapse(2)
+  for (int i = y + h - 1; i >= y; i--)
+    for (int j = x + w - 1; j >= x; j--)
+      if (cur_img (i, j)) {
+        if (i < DIM - 1 && j < DIM - 1) {
+          uint32_t m = max (cur_img (i + 1, j), cur_img (i, j + 1));
+          if (m > cur_img (i, j)) {
+            change     = 1;
+            cur_img (i, j) = m;
+          }
+        } else if (j < DIM - 1) {
+          uint32_t m = cur_img (i, j + 1);
+          if (m > cur_img (i, j)) {
+            change     = 1;
+            cur_img (i, j) = m;
+          }
+        } else if (i < DIM - 1) {
+          uint32_t m = cur_img (i + 1, j);
+          if (m > cur_img (i, j)) {
+            change     = 1;
+            cur_img (i, j) = m;
+          }
+        }
+      }
+
+  monitoring_end_tile_id (x, y, w, h, cpu, TASKID_UP_LEFT);
+
+  return change;
+}
+
+///////////////////////////// Simple openMP version (omp)
+// Suggested cmdline(s):
+// ./run -l images/spirale.png -k max -v omp -m
+//
+unsigned max_compute_omp (unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++) {
+
+    if ((tile_down_right_omp (0, 0, DIM, DIM, 0) |
+         tile_up_left_omp (0, 0, DIM, DIM, 0)) == 0)
       return it;
   }
 
