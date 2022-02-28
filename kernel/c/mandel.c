@@ -54,7 +54,7 @@ unsigned mandel_compute_tiled (unsigned nb_iter)
 
 ///////////////////////////// Tiled parallel version (tiled)
 // Suggested cmdline:
-// ./run -k mandel -v omp_tiled -ts 64
+// ./run -k mandel -v omp_tiled -ts 64 -m
 //
 unsigned mandel_compute_omp_tiled (unsigned nb_iter)
 {
