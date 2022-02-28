@@ -63,7 +63,7 @@ unsigned mandel_compute_omp_tiled (unsigned nb_iter)
 #pragma omp parallel for schedule(runtime) collapse(2)
     for (int y = 0; y < DIM; y += TILE_H)
       for (int x = 0; x < DIM; x += TILE_W)
-        do_tile (x, y, TILE_W, TILE_H, 0);
+        do_tile (x, y, TILE_W, TILE_H, omp_get_thread_num());
 
     zoom ();
   }
