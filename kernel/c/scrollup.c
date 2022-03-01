@@ -67,11 +67,11 @@ unsigned scrollup_compute_ji (unsigned nb_iter)
 {
   for (unsigned it = 1; it <= nb_iter; it++) {
 
-    for (int i = 0; i < DIM; i++) {
-      for (int j = 0; j < DIM; j++)
-        next_img (j, i) = cur_img ((j < DIM - 1) ? j + 1 : 0, i);
-        // next_img (DIM - 1, j) = cur_img (0, j); ??????????????????????????????
-    }
+    for (int i = 0; i < DIM; i++)
+      for (int j = 0; j < DIM; j++) {
+        next_img (j, i) = cur_img (j + 1, i);
+        next_img (DIM - 1, j) = cur_img (0, j);
+      }
 
     swap_images ();
   }
