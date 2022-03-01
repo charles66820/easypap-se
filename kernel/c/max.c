@@ -237,9 +237,9 @@ unsigned max_compute_tiled (unsigned nb_iter)
 
 ///////////////////////////// Tiled sequential version (tiled)
 // Suggested cmdline(s):
-// ./run -l images/spirale.png -k max -v tiled_task -ts 32
+// ./run -l images/spirale.png -k max -v task -ts 32
 //
-unsigned max_compute_tiled_task (unsigned nb_iter)
+unsigned max_compute_task (unsigned nb_iter)
 {
   unsigned res = 0;
 
@@ -249,16 +249,19 @@ unsigned max_compute_tiled_task (unsigned nb_iter)
     for (unsigned it = 1; it <= nb_iter; it++) {
       int change = 0;
 
+      int tuile[NB_TILES_Y][NB_TILES_X + 1] __attribute__ ((unused));
+
       // Bottom-right propagation
       for (int i = 0; i < NB_TILES_Y; i++)
         for (int j = 0; j < NB_TILES_X; j++)
-#pragma omp task firstprivate(i,j)
-          change |= tile_down_right (j * TILE_W, i * TILE_H, TILE_W, TILE_H, 0);
+#pragma omp task firstprivate(i,j) depend(in: tuile[i][j]) depend(out: tuile[i+1][j+1]) shared(change)
+          change |= tile_down_right (j * TILE_W, i * TILE_H, TILE_W, TILE_H, omp_get_thread_num());
           // Up-left propagation
+#pragma omp taskwait
       for (int i = NB_TILES_Y - 1; i >= 0; i--)
         for (int j = NB_TILES_X - 1; j >= 0; j--)
-#pragma omp task firstprivate(i,j)
-          change |= tile_up_left (j * TILE_W, i * TILE_H, TILE_W, TILE_H, 0);
+#pragma omp task firstprivate(i,j) depend(in: tuile[i][j]) depend(out: tuile[i-1][j-1]) shared(change)
+          change |= tile_up_left (j * TILE_W, i * TILE_H, TILE_W, TILE_H, omp_get_thread_num());
 
 #pragma omp taskwait
       if (!change) {
