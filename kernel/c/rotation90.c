@@ -38,8 +38,10 @@ unsigned rotation90_compute_omp (unsigned nb_iter)
 {
   for (unsigned it = 1; it <= nb_iter; it++) {
 
-    #pragma omp parallel
-    do_tile (0, 0, DIM, DIM, omp_get_thread_num());
+#pragma omp parallel for schedule(runtime)
+    for (int y = 0; y < DIM; y += 1)
+      for (int x = 0; x < DIM; x += 1)
+        do_tile (x, y, 1, 1, omp_get_thread_num());
 
     swap_images ();
   }
@@ -78,6 +80,30 @@ unsigned rotation90_compute_omp_tiled (unsigned nb_iter)
     for (int y = 0; y < DIM; y += TILE_H)
       for (int x = 0; x < DIM; x += TILE_W)
         do_tile (x, y, TILE_W, TILE_H, omp_get_thread_num());
+
+    swap_images ();
+  }
+
+  return 0;
+}
+
+///////////////////////////// Simple parallale version (omp_tiled_opt)
+// Suggested cmdline:
+// ./run -l images/shibuya.png -ts 16 -k rotation90 -v omp_tiled_opt -m
+//
+unsigned rotation90_compute_omp_tiled_opt (unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++) {
+
+#pragma omp parallel for schedule(static) collapse(2)
+    for (int y = 0; y < DIM/2; y += TILE_H)
+      for (int x = 0; x < DIM/2; x += TILE_W)
+      {
+        do_tile (x, y, TILE_W, TILE_H, omp_get_thread_num());
+        do_tile (DIM - TILE_W - y, x, TILE_W, TILE_H, omp_get_thread_num());
+        do_tile (y, DIM - TILE_W - x, TILE_W, TILE_H, omp_get_thread_num());
+        do_tile (DIM - TILE_W - x, DIM - TILE_W - y, TILE_W, TILE_H, omp_get_thread_num());
+      }
 
     swap_images ();
   }
