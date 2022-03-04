@@ -35,8 +35,42 @@ int blur_do_tile_default (int x, int y, int width, int height)
 
       next_img (i, j) = rgba (r, g, b, a);
     }
-    
+
   return 0;
+}
+
+// Optimized implementation of tiles
+int blur_do_tile_opt (int x, int y, int width, int height)
+{
+  // Outer tiles are computed the usual way
+  if (x == 0 || x == DIM - width || y == 0 || y == DIM - height)
+    return blur_do_tile_default (x, y, width, height);
+  // Inner tiles involve no border test
+  return do_tile_inner (x, y, width, height);
+}
+
+int do_tile_inner (int x, int y, int width, int height)
+{
+  for (int i = y; i < y + height; i++)
+    for (int j = x; j < x + width; j++) {
+      unsigned r = 0, g = 0, b = 0, a = 0, n = 0;
+      for (int yloc = i - 1; yloc <= i + 1; yloc++)
+        for (int xloc = j - 1; xloc <= j + 1; xloc++) {
+          unsigned c = cur_img (yloc, xloc);
+          r += extract_red (c);
+          g += extract_green (c);
+          b += extract_blue (c);
+          a += extract_alpha (c);
+          n += 1;
+        }
+
+      r /= n;
+      g /= n;
+      b /= n;
+      a /= n;
+
+      next_img (i, j) = rgba (r, g, b, a);
+    }
 }
 
 ///////////////////////////// Sequential version (tiled)
