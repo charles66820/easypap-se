@@ -75,6 +75,9 @@ ifdef ENABLE_MONITORING
 CFLAGS		+= -DENABLE_MONITORING
 endif
 
+# ADD
+LDFLAGS		+= -L/usr/lib/llvm-13/lib
+
 # OpenMP
 CFLAGS		+= -fopenmp
 LDFLAGS		+= -fopenmp
