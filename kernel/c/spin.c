@@ -190,6 +190,7 @@ void spin_tile_check_avx (void)
 
 static inline __m256 _mm256_abs_ps (__m256 a)
 {
+  // NOTE: create an vector fill with 11111111111111111111111111111111 (32 one in binary)
   __m256i minus1 = _mm256_set1_epi32 (-1);
   __m256 mask    = _mm256_castsi256_ps (_mm256_srli_epi32 (minus1, 1));
 
@@ -200,9 +201,27 @@ static __m256 _mm256_atan_ps (__m256 x)
 {
   __m256 res;
 
-  // FIXME: we go back to sequential mode here :(
-  for (int i = 0; i < AVX_VEC_SIZE_FLOAT; i++)
-    res[i] = x[i] * M_PI_4 + 0.273 * x[i] * (1 - fabsf(x[i]));
+  // NOTE: create an vector fill with 1.0
+  const __m256 one = _mm256_set1_ps(1.0);
+
+  // NOTE: create an vector fill with 0.273
+  const __m256 k = _mm256_set1_ps(0.273);
+
+  // NOTE: create an vector fill with M_PI_4
+  const __m256 pi4 = _mm256_set1_ps(M_PI_4); // \frac{\PI}{4}
+
+  // NOTE: create an vector fill with abs(x)
+  res = _mm256_abs_ps(x); // |x| or abs(x)
+
+  res = _mm256_sub_ps(one, res); // 1 - |x| or 1 - abs(x)
+
+  res = _mm256_fmadd_ps(k, res, pi4); // 0.273 + (1 - abs(x)) + M_PI_4
+
+  res = _mm256_mul_ps(res, x); // (0.273 + (1 - abs(x)) + M_PI_4) * x
+
+  // // FIXME: we go back to sequential mode here :(
+  // for (int i = 0; i < AVX_VEC_SIZE_FLOAT; i++)
+  //   res[i] = x[i] * M_PI_4 + 0.273 * x[i] * (1 - fabsf(x[i]));
 
   return res;
 
@@ -211,7 +230,8 @@ static __m256 _mm256_atan_ps (__m256 x)
 
 static __m256 _mm256_atan2_ps (__m256 y, __m256 x)
 {
-  //__m256 pi2 = _mm256_set1_ps (M_PI_2);
+  __m256 pi = _mm256_set1_ps (M_PI);
+  __m256 pi2 = _mm256_set1_ps (M_PI_2);
 
   // float ay = fabsf (y), ax = fabsf (x);
   __m256 ax = _mm256_abs_ps (x);
@@ -228,15 +248,30 @@ static __m256 _mm256_atan2_ps (__m256 y, __m256 x)
   // float th = atan_approx(z);
   __m256 th = _mm256_atan_ps (z);
 
-  // FIXME: we go back to sequential mode here :(
-  for (int i = 0; i < AVX_VEC_SIZE_FLOAT; i++) {
-    if (mask[i])
-      th[i] = M_PI_2 - th[i];
-    if (x[i] < 0)
-      th[i] = M_PI - th[i];
-    if (y[i] < 0)
-      th[i] = -th[i];
-  }
+  // if (mask[i]) th[i] = M_PI_2 - th[i];
+  __m256 th_if = _mm256_sub_ps (pi2, th);
+  th = _mm256_blendv_ps (th, th_if, mask); // apply the sustraction to all mask
+
+  __m256 zero = _mm256_setzero_ps(); // NOTE: create an vector fill with 0
+  //if (x[i] < 0) th[i] = M_PI - th[i];
+  th_if = _mm256_sub_ps (pi, th); // M_PI - th
+  mask = _mm256_cmp_ps (x, zero, _CMP_LT_OS); // x < 0
+  th = _mm256_blendv_ps (th, th_if, mask);
+
+  //if (y[i] < 0) th[i] = -th[i];
+  th_if = _mm256_sub_ps (zero, th); // -th \eqv 0-th
+  mask = _mm256_cmp_ps (y, zero, _CMP_LT_OS); // y < 0
+  th = _mm256_blendv_ps (th, th_if, mask);
+
+  // // FIXME: we go back to sequential mode here :(
+  // for (int i = 0; i < AVX_VEC_SIZE_FLOAT; i++) {
+  //   if (mask[i])
+  //     th[i] = M_PI_2 - th[i];
+  //   if (x[i] < 0)
+  //     th[i] = M_PI - th[i];
+  //   if (y[i] < 0)
+  //    th[i] = -th[i];
+  // }
 
   return th;
 }
