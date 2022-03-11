@@ -7,7 +7,10 @@
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/traces/include"
             ],
-            "defines": [],
+            "defines": [
+                "ENABLE_VECTO",
+                "__AVX2__"
+            ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "gnu17",
             "cppStandard": "gnu++14",
