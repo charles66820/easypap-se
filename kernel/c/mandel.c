@@ -210,18 +210,24 @@ int mandel_do_tile_avx (int x, int y, int width, int height)
         //  une racine carrée)
         // Le résultat est un vecteur d'entiers (mask) qui contient FF quand
         // c'est vrai et 0 sinon
-        __m256i mask = (__m256i)_mm256_cmp_ps (norm, max_norm, _CMP_LE_OS);
+        __m256 mask = (__m256)_mm256_cmp_ps (norm, max_norm, _CMP_LE_OS);
 
         // Il faut sortir de la boucle lorsque le masque ne contient que
         // des zéros (i.e. tous les Z ont une norme > 2, donc la suite a
         // divergé pour tout le monde)
 
-        // FIXME 1
+        // FIXME: 1
+        // Test que tous le masque est égale a zero
+        if (_mm256_testz_ps(mask, mask) == 1) break;// add
 
         // On met à jour le nombre d'itérations effectuées pour chaque pixel.
 
-        // FIXME 2
-        iter = _mm256_add_epi32 (iter, un);
+        // FIXME: 2
+        // iter = _mm256_add_epi32 (iter, un); // old
+        // On calcule plus intéligament les 1 (mask = 0*32 1*32 0*32) // on vide les 1*32
+        // iter = _mm256_blendv_epi8 (iter, _mm256_add_epi32(iter, un), (__m256i)mask); // add
+        // or
+        iter = _mm256_add_epi32(iter, _mm256_and_si256(un, (__m256i)mask)); // add
 
         // On calcule Z = Z^2 + C et c'est reparti !
         __m256 x = _mm256_add_ps (rc, _mm256_fnmadd_ps (zi, zi, cr));
