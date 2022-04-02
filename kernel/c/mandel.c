@@ -176,9 +176,10 @@ static unsigned compute_one_pixel(int i, int j)
 
 // Intrinsics functions
 #ifdef ENABLE_VECTO
-#include <immintrin.h>
 
 #if __AVX2__ == 1
+
+#include <immintrin.h>
 
 void mandel_tile_check_avx(void)
 {
@@ -262,4 +263,73 @@ int mandel_do_tile_avx(int x, int y, int width, int height)
 
 #endif // AVX
 
+#endif
+
+#ifdef ENABLE_MPI
+#include <mpi.h>
+
+static int rank, size;
+
+void mandel_init_mpi()
+{
+  easypap_check_mpi(); // check if MPI was correctly configured
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  mandel_init();
+}
+
+static int rankTop(int rank)
+{
+  return rank * (DIM / size);
+}
+
+static int rankSize(int rank)
+{
+  if (rank == size - 1)
+    return DIM - rankTop(rank);
+  else
+    return DIM / size;
+}
+
+void mandel_refresh_img_mpi()
+{
+  int masterRank = 0;
+
+  if (rank == masterRank)
+  { // Master
+    char buf[1];
+    for (unsigned receiveRank = 1; receiveRank < size; receiveRank++)
+    {
+      MPI_Status status;
+      MPI_Recv(&cur_img(rankTop(receiveRank), 0),
+               rankSize(receiveRank) * DIM,
+               MPI_INT,
+               receiveRank,
+               0,
+               MPI_COMM_WORLD,
+               &status);
+      // status
+    }
+  }
+  else
+  {
+    MPI_Send(&cur_img(rankTop(rank), 0), rankSize(rank) * DIM, MPI_INT, masterRank, 0, MPI_COMM_WORLD);
+  }
+}
+
+//////////// MPI basic varianr
+// Suggested cmdline:
+// ./run -k mandel -v mpi -mpi "-np 4"  -d M
+
+unsigned mandel_compute_mpi(unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++)
+  {
+    do_tile(0, rankTop(rank), DIM, rankSize(rank), 0);
+    zoom();
+  }
+  return 0;
+}
 #endif

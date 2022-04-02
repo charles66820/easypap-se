@@ -66,6 +66,13 @@ void asandPile_refresh_img()
 
 /////////////////////////////  Initial Configurations
 
+static inline void set_cell(int y, int x, unsigned v)
+{
+  atable(y, x) = v;
+  if (opencl_used)
+    cur_img(y, x) = v;
+}
+
 void asandPile_draw_4partout(void);
 
 void asandPile_draw(char *param)
@@ -85,7 +92,7 @@ void asandPile_draw_4partout(void)
   max_grains = 8;
   for (int i = 1; i < DIM - 1; i++)
     for (int j = 1; j < DIM - 1; j++)
-      atable(i, j) = 4;
+      set_cell(i, j, 4);
 }
 
 void asandPile_draw_DIM(void)
@@ -93,7 +100,7 @@ void asandPile_draw_DIM(void)
   max_grains = DIM;
   for (int i = DIM / 4; i < DIM - 1; i += DIM / 4)
     for (int j = DIM / 4; j < DIM - 1; j += DIM / 4)
-      atable(i, j) = i * j / 4;
+      set_cell(i, j, i * j / 4);
 }
 
 void asandPile_draw_alea(void)
@@ -101,14 +108,14 @@ void asandPile_draw_alea(void)
   max_grains = 5000;
   for (int i = 0; i < DIM >> 3; i++)
   {
-    atable(1 + random() % (DIM - 2), 1 + random() % (DIM - 2)) = 1000 + (random() % (4000));
+    set_cell(1 + random() % (DIM - 2), 1 + random() % (DIM - 2), 1000 + (random() % (4000)));
   }
 }
 
 void asandPile_draw_big(void)
 {
-  const int i  = DIM / 2;
-  atable(i, i) = 100000;
+  const int i = DIM / 2;
+  set_cell(i, i, 100000);
 }
 
 static void one_spiral(int x, int y, int step, int turns)
@@ -118,19 +125,19 @@ static void one_spiral(int x, int y, int step, int turns)
   for (t = 1; t <= turns; t++)
   {
     for (; i < x + t * step; i++)
-      atable(i, j) = 3;
+      set_cell(i, j, 3);
     for (; j < y + t * step + 1; j++)
-      atable(i, j) = 3;
+      set_cell(i, j, 3);
     for (; i > x - t * step - 1; i--)
-      atable(i, j) = 3;
+      set_cell(i, j, 3);
     for (; j > y - t * step - 1; j--)
-      atable(i, j) = 3;
+      set_cell(i, j, 3);
   }
-  atable(i, j) = 4;
+  set_cell(i, j, 4);
 
   for (int i = -2; i < 3; i++)
     for (int j = -2; j < 3; j++)
-      atable(i + x, j + y) = 3;
+      set_cell(i + x, j + y, 3);
 }
 
 static void many_spirals(int xdebut, int xfin, int ydebut, int yfin, int step, int turns)
@@ -235,6 +242,17 @@ unsigned ssandPile_compute_tiled(unsigned nb_iter)
   }
 
   return 0;
+}
+
+// Only called when --dump or --thumbnails is used
+void ssandPile_refresh_img_ocl()
+{
+  cl_int err;
+
+  err = clEnqueueReadBuffer(queue, cur_buffer, CL_TRUE, 0, sizeof(unsigned) * DIM * DIM, TABLE, 0, NULL, NULL);
+  check(err, "Failed to read buffer from GPU");
+
+  ssandPile_refresh_img();
 }
 
 //////////////////////////////////////////////////////////////////////////////////
