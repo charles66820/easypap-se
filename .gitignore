@@ -1,5 +1,5 @@
 public
 .vscode/*
 images
-.clang-format
+# .clang-format
 !/.vscode/c_cpp_properties.json
