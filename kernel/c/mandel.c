@@ -362,7 +362,7 @@ void mandel_refresh_img_mpi_omp()
 //////////// MPI basic varianr
 // Suggested cmdline:
 // OMP_SCHEDULE=dynamic ./run -k mandel -v mpi_omp -mpi "-np 4"  -d M
-// OMP_SCHEDULE=dynamic ./run -k mandel -v mpi_omp -mpi "-np 4 -mca btl tcp,self --host leger, gauguin" -d M
+// OMP_SCHEDULE=dynamic ./run -k mandel -v mpi_omp -mpi "-np 4 --oversubscribe -mca btl tcp,self --host leger,gauguin"
 
 unsigned mandel_compute_mpi_omp(unsigned nb_iter)
 {
