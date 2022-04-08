@@ -9,7 +9,8 @@
             ],
             "defines": [
                 "ENABLE_VECTO",
-                "__AVX2__"
+                "__AVX2__",
+                "ENABLE_MPI"
             ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "gnu17",

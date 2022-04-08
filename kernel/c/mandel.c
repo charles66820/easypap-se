@@ -297,6 +297,8 @@ void mandel_refresh_img_mpi()
 {
   int masterRank = 0;
 
+#if false
+
   if (rank == masterRank)
   { // Master
     char buf[1];
@@ -317,6 +319,19 @@ void mandel_refresh_img_mpi()
   {
     MPI_Send(&cur_img(rankTop(rank), 0), rankSize(rank) * DIM, MPI_INT, masterRank, 0, MPI_COMM_WORLD);
   }
+
+#else
+
+  MPI_Gather(&cur_img(rankTop(rank), 0),
+             rankSize(rank) * DIM,
+             MPI_INT,
+             &cur_img(rankTop(rank), 0),
+             rankSize(masterRank) * DIM,
+             MPI_INT,
+             0,
+             MPI_COMM_WORLD);
+
+#endif
 }
 
 //////////// MPI basic varianr
@@ -328,6 +343,35 @@ unsigned mandel_compute_mpi(unsigned nb_iter)
   for (unsigned it = 1; it <= nb_iter; it++)
   {
     do_tile(0, rankTop(rank), DIM, rankSize(rank), 0);
+    zoom();
+  }
+  return 0;
+}
+
+void mandel_init_mpi_omp()
+{
+  mandel_init_mpi();
+}
+
+void mandel_refresh_img_mpi_omp()
+{
+  mandel_refresh_img_mpi();
+  // `rankSize(receiveRank) * DIM,` to `rankSize(rank) * DIM,` ?
+}
+
+//////////// MPI basic varianr
+// Suggested cmdline:
+// OMP_SCHEDULE=dynamic ./run -k mandel -v mpi_omp -mpi "-np 4"  -d M
+// OMP_SCHEDULE=dynamic ./run -k mandel -v mpi_omp -mpi "-np 4 -mca btl tcp,self --host leger, gauguin" -d M
+
+unsigned mandel_compute_mpi_omp(unsigned nb_iter)
+{
+  for (unsigned it = 1; it <= nb_iter; it++)
+  {
+#pragma omp parallel for schedule(runtime)
+    for (int r = rankTop(rank); r < rankTop(rank) + rankSize(rank); r++)
+      do_tile(0, r, DIM, 1, omp_get_thread_num());
+
     zoom();
   }
   return 0;
